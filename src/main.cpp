@@ -6,23 +6,27 @@
 #include <string.h>
 #include <WiFi.h>
 #include <WebServer.h>
+#include <DHT.h>
 
 #include "main.h"
 
 struct SensorReadings {
   int moisture[NUM_MOISTURE_SENSORS];
   int avgMoisture;
-  int humidity;
-  int temperature;
+  float humidity;
+  float temperature;
 };
 
-TwoWire tw = TwoWire(1);
-Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT, &tw, OLED_RESET);
-WebServer Server(API_PORT);
+TwoWire tw = TwoWire(1); // FOR SDA/SCL of OLED display
+Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT, &tw, OLED_RESET); // OLED DISPLAY
+WebServer Server(API_PORT); // For JSON API
+DHT dht; // For temp/humidity sensor
+
+// The struct we will be keeping an up to date record of our readings in
 struct SensorReadings sensorReadings = {};
 
 // Returns a moisture value between 0 and 100, where 0 is dryest and 100 is fully submersed
-void updateSensorReadings() {
+void updateMoistureReadings() {
   // Read from the available moisture sensors and 
   for (int i = 0; i < NUM_MOISTURE_SENSORS; i++) {
     int adc = analogRead(PINS_MOISTURE[i]);
@@ -36,6 +40,18 @@ void updateSensorReadings() {
     avgMoisture += sensorReadings.moisture[i];
   }
   sensorReadings.avgMoisture = (int) round(avgMoisture / NUM_MOISTURE_SENSORS);
+}
+
+void updateTempHumidity() {
+  delay(dht.getMinimumSamplingPeriod());
+
+  sensorReadings.humidity = dht.getHumidity();
+  sensorReadings.temperature = dht.getTemperature();
+}
+
+void updateSensorReadings() {
+  updateMoistureReadings();
+  updateTempHumidity();
 }
 
 void pumpWater(int seconds) {
@@ -57,9 +73,9 @@ void displayReadings() {
   display.setCursor(0, 0);
   display.printf("%s %i%%", MOISTURE_MSG, sensorReadings.avgMoisture);
   display.setCursor(0, spacing);
-  display.printf("%s %i%C", AIR_TEMP_MSG, sensorReadings.temperature, (char)223);
+  display.printf("%s %.2f%C", AIR_TEMP_MSG, sensorReadings.temperature, (char)223);
   display.setCursor(0, spacing * 2);
-  display.printf("%s %i%%", HUMIDITY_MSG, sensorReadings.humidity);
+  display.printf("%s %.2f%%", HUMIDITY_MSG, sensorReadings.humidity);
   display.setCursor(0, spacing * 3);  
   display.display();
 }
@@ -125,8 +141,10 @@ void setupWireless() {
 
   display.clearDisplay();
   display.setCursor(0, 0);
-  display.print("Connected! IP address:");
+  display.print("Connected!");
   display.setCursor(0, 10);
+  display.print("IP address:");
+  display.setCursor(0, 20);
   char buffer[15]; // Buffer large enough to hold an IPv4 address as string
   WiFi.localIP().toString().toCharArray(buffer, 15);
   display.print(buffer);
@@ -137,10 +155,11 @@ void setupWireless() {
 
 void setup() {
   Serial.begin(9600);
+  dht.setup(PIN_DHT, DHT::DHT_TYPE);
   tw.begin(PIN_SDA, PIN_SCL);
   pinMode (PIN_PUMP, OUTPUT);
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);// initialize with the I2C addr 0x3C
   delay(3000); // DM OLED has resistors R3 and R4 swapped, causing reset time of 2.7sec... Here's a hack for stock units
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);// initialize with the I2C addr 0x3C
 
   display.clearDisplay();
   display.setTextColor(WHITE);

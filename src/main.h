@@ -7,9 +7,11 @@
 #define JSON_BUFF_SIZE 1024
 
 #define PIN_PUMP 17
+#define PIN_DHT 15
+#define DHT_TYPE DHT22
 
 #define NUM_MOISTURE_SENSORS 2
-const int PINS_MOISTURE[NUM_MOISTURE_SENSORS]= {33, 35};
+const int PINS_MOISTURE[NUM_MOISTURE_SENSORS]= {34, 35};
 
 #define MAX_MOISTURE_VALUE 4095 // Change this to values your sensor reads
 #define MIN_MOISTURE_VALUE 0 // Change this to values your sensor reads
