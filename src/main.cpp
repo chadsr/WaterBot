@@ -6,7 +6,8 @@
 #include <string.h>
 #include <WiFi.h>
 #include <WebServer.h>
-#include <DHT.h>
+#include <Adafruit_Sensor.h>
+#include <DHT_U.h>
 
 #include "main.h"
 
@@ -20,19 +21,24 @@ struct SensorReadings {
 TwoWire tw = TwoWire(1); // FOR SDA/SCL of OLED display
 Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT, &tw, OLED_RESET); // OLED DISPLAY
 WebServer Server(API_PORT); // For JSON API
-DHT dht; // For temp/humidity sensor
+DHT_Unified dht(PIN_DHT, DHT_TYPE);
 
 // The struct we will be keeping an up to date record of our readings in
 struct SensorReadings sensorReadings = {};
 
 // Returns a moisture value between 0 and 100, where 0 is dryest and 100 is fully submersed
 void updateMoistureReadings() {
+  digitalWrite(PIN_MOISTURE_VCC, HIGH); // Turn the sensors on
+  delay(100); // Small delay to make sure the sensor(s) have power
+
   // Read from the available moisture sensors and 
   for (int i = 0; i < NUM_MOISTURE_SENSORS; i++) {
     int adc = analogRead(PINS_MOISTURE[i]);
     // Map the analog value to a value between 0 and 100 for easier reading
     sensorReadings.moisture[i] = 100 - int(map(adc, MIN_MOISTURE_VALUE, MAX_MOISTURE_VALUE, 0, 100));
   }
+
+  digitalWrite(PIN_MOISTURE_VCC, LOW); // Turn the sensors off again
 
   // Get the average value of all moisture sensors
   int avgMoisture = 0;
@@ -43,10 +49,21 @@ void updateMoistureReadings() {
 }
 
 void updateTempHumidity() {
-  delay(dht.getMinimumSamplingPeriod());
+  sensors_event_t event;
 
-  sensorReadings.humidity = dht.getHumidity();
-  sensorReadings.temperature = dht.getTemperature();
+  dht.temperature().getEvent(&event);
+  if (isnan(event.temperature)) {
+    sensorReadings.temperature = 0;
+  } else {
+    sensorReadings.temperature = event.temperature;
+  }
+
+  dht.humidity().getEvent(&event);
+  if (isnan(event.relative_humidity)) {
+    sensorReadings.humidity = 0;
+  } else {
+    sensorReadings.humidity = event.relative_humidity;
+  }
 }
 
 void updateSensorReadings() {
@@ -73,9 +90,9 @@ void displayReadings() {
   display.setCursor(0, 0);
   display.printf("%s %i%%", MOISTURE_MSG, sensorReadings.avgMoisture);
   display.setCursor(0, spacing);
-  display.printf("%s %.2f%C", AIR_TEMP_MSG, sensorReadings.temperature, (char)223);
+  display.printf("%s %.1f%cC", AIR_TEMP_MSG, sensorReadings.temperature, (char)247);
   display.setCursor(0, spacing * 2);
-  display.printf("%s %.2f%%", HUMIDITY_MSG, sensorReadings.humidity);
+  display.printf("%s %.1f%%", HUMIDITY_MSG, sensorReadings.humidity);
   display.setCursor(0, spacing * 3);  
   display.display();
 }
@@ -154,10 +171,17 @@ void setupWireless() {
 }
 
 void setup() {
-  Serial.begin(9600);
-  dht.setup(PIN_DHT, DHT::DHT_TYPE);
+  dht.begin();
   tw.begin(PIN_SDA, PIN_SCL);
-  pinMode (PIN_PUMP, OUTPUT);
+
+  // Setup the pump and make sure it's off
+  pinMode(PIN_PUMP, OUTPUT);
+  digitalWrite(PIN_PUMP, LOW);
+
+  // Setup the moisture sensor power pin and make sure it's off
+  pinMode(PIN_MOISTURE_VCC, OUTPUT);
+  digitalWrite(PIN_MOISTURE_VCC, LOW);
+
   delay(3000); // DM OLED has resistors R3 and R4 swapped, causing reset time of 2.7sec... Here's a hack for stock units
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);// initialize with the I2C addr 0x3C
 
@@ -176,6 +200,7 @@ void loop() {
   if (sensorReadings.avgMoisture <= LOW_MOISTURE_TRIGGER) { // Trigger the pumping process
     while (sensorReadings.avgMoisture < TARGET_MOISTURE) {
       pumpWater(PUMP_SECONDS);
+      displayReadings();
       delay(WAIT_SECONDS * 1000);
       updateSensorReadings(); // Read the moisture level again
       displayReadings();
