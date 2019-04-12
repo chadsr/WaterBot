@@ -197,7 +197,9 @@ void loop() {
   Server.handleClient();
   displayReadings();
 
-  if (sensorReadings.avgMoisture <= LOW_MOISTURE_TRIGGER) { // Trigger the pumping process
+  // Trigger the pumping process if the average moisture hits our LOW_MOISTURE_TRIGGER value
+  // Do nothing if the reading is zero. This likely means no sensor is connected (or it's broken).
+  if (sensorReadings.avgMoisture != 0 && sensorReadings.avgMoisture <= LOW_MOISTURE_TRIGGER) {
     while (sensorReadings.avgMoisture < TARGET_MOISTURE) {
       pumpWater(PUMP_SECONDS);
       displayReadings();
