@@ -1,7 +1,7 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#define API_PORT 1337
+#define API_PORT 80
 #define WIFI_SSID "somewifi"
 #define WIFI_PASSWORD "somepassword"
 #define JSON_BUFF_SIZE 1024
