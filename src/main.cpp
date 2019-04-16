@@ -20,7 +20,7 @@ struct SensorReadings {
 
 TwoWire tw = TwoWire(1); // FOR SDA/SCL of OLED display
 Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT, &tw, OLED_RESET); // OLED DISPLAY
-WebServer Server(API_PORT); // For JSON API
+WebServer server(API_PORT); // For JSON API
 DHT_Unified dht(PIN_DHT, DHT_TYPE);
 
 // The struct we will be keeping an up to date record of our readings in
@@ -113,19 +113,38 @@ void getReadingsJSON(char *dest, size_t size) {
 }
 
 void handleNotFound() {
-  Server.send(404, "text/plain", "Page Not Found");
+  server.send(404, "text/plain", "Page Not Found");
 }
 
 void handleReadings() {
   char buffer[JSON_BUFF_SIZE];
   getReadingsJSON(buffer, JSON_BUFF_SIZE);
-  Server.send(200, "text/json", String(buffer));
+  server.send(200, "text/json", String(buffer));
 }
 
-void setupServer() {
-  Server.onNotFound(handleNotFound);
-  Server.on("/readings", HTTP_GET, handleReadings);
-  Server.begin();
+void listenerLoop(void * pvParameters) {
+  while(true) { // Inifite loopings
+    server.handleClient();
+  }
+}
+
+void loop() {
+  updateSensorReadings();
+  displayReadings();
+
+  // Trigger the pumping process if the average moisture hits our LOW_MOISTURE_TRIGGER value
+  // Do nothing if the reading is zero. This likely means no sensor is connected (or it's broken).
+  if (sensorReadings.avgMoisture != 0 && sensorReadings.avgMoisture <= LOW_MOISTURE_TRIGGER) {
+    while (sensorReadings.avgMoisture < TARGET_MOISTURE) {
+      pumpWater(PUMP_SECONDS);
+      displayReadings();
+      delay(WAIT_SECONDS * 1000);
+      updateSensorReadings(); // Read the moisture level again
+      displayReadings();
+    }
+  } else {
+    delay(WAIT_SECONDS * 1000);
+  }
 }
 
 void setupWireless() {
@@ -166,8 +185,15 @@ void setupWireless() {
   WiFi.localIP().toString().toCharArray(buffer, 15);
   display.print(buffer);
   display.display();
-
   delay(5000); // Delay so the IP can be read
+
+  server.onNotFound(handleNotFound);
+  server.on("/readings", HTTP_GET, handleReadings); // The http endpoint for GETting values
+  server.begin();
+
+  // We are taking advantage of the freeRTOS API function to spin up a separate thread for listening for http clients
+  // This way it won't interfere with any of our other functionality
+  xTaskCreate(listenerLoop, "HTTP Server Listener", 4096, NULL, 1, NULL);
 }
 
 void setup() {
@@ -190,22 +216,4 @@ void setup() {
   display.setTextSize(1.5);
 
   setupWireless();
-}
-
-void loop() {
-  updateSensorReadings();
-  Server.handleClient();
-  displayReadings();
-
-  // Trigger the pumping process if the average moisture hits our LOW_MOISTURE_TRIGGER value
-  // Do nothing if the reading is zero. This likely means no sensor is connected (or it's broken).
-  if (sensorReadings.avgMoisture != 0 && sensorReadings.avgMoisture <= LOW_MOISTURE_TRIGGER) {
-    while (sensorReadings.avgMoisture < TARGET_MOISTURE) {
-      pumpWater(PUMP_SECONDS);
-      displayReadings();
-      delay(WAIT_SECONDS * 1000);
-      updateSensorReadings(); // Read the moisture level again
-      displayReadings();
-    }
-  }
 }
