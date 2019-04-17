@@ -33,3 +33,4 @@
 
 .*
 !.gitignore
+!.travis.yml
