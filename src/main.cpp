@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <SPI.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -35,7 +36,7 @@ void updateMoistureReadings() {
   for (int i = 0; i < NUM_MOISTURE_SENSORS; i++) {
     int adc = analogRead(PINS_MOISTURE[i]);
     // Map the analog value to a value between 0 and 100 for easier reading
-    sensorReadings.moisture[i] = 100 - int(map(adc, MIN_MOISTURE_VALUE, MAX_MOISTURE_VALUE, 0, 100));
+    sensorReadings.moisture[i] = 100 - uint(map(adc, MAX_MOISTURE_VALUE, MIN_MOISTURE_VALUE, 0, 100));
   }
 
   digitalWrite(PIN_MOISTURE_VCC, LOW); // Turn the sensors off again
