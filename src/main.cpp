@@ -189,7 +189,7 @@ void setupWireless() {
   delay(5000); // Delay so the IP can be read
 
   server.onNotFound(handleNotFound);
-  server.on("/readings", HTTP_GET, handleReadings); // The http endpoint for GETting values
+  server.on(API_ENDPOINT, HTTP_GET, handleReadings); // The http endpoint for GETting values
   server.begin();
 
   // We are taking advantage of the freeRTOS API function to spin up a separate thread for listening for http clients

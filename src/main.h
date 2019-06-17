@@ -2,6 +2,7 @@
 #define MAIN_H
 
 #define API_PORT 80
+#define API_ENDPOINT "/readings"
 #define WIFI_SSID "somewifi"
 #define WIFI_PASSWORD "somepassword"
 #define JSON_BUFF_SIZE 1024
@@ -14,12 +15,12 @@
 const int PINS_MOISTURE[NUM_MOISTURE_SENSORS]= {34, 35};
 #define PIN_MOISTURE_VCC 5 // Pin to control power to the moisture sensors (via transistor). Limits corrosion this way.
 
-#define MAX_MOISTURE_VALUE 4095 // Change this to values your sensor reads
-#define MIN_MOISTURE_VALUE 0 // Change this to values your sensor reads
-#define LOW_MOISTURE_TRIGGER 50 // Low moisture level in percentage, which will trigger the pumping process
-#define TARGET_MOISTURE 65 // Target moisture level in percentage
-#define PUMP_SECONDS 10 // Number of seconds to pump for before waiting for another reading
-#define WAIT_SECONDS 20 // Seconds to wait inbetween pumps, before checking the moisture level again. Also waiting time between checking sensors.
+#define MAX_MOISTURE_VALUE 760 // Change this to values your sensor reads (Value when moisture is maximum)
+#define MIN_MOISTURE_VALUE 1700// Change this to values your sensor reads (Value when moisture is minimum)
+#define LOW_MOISTURE_TRIGGER 30 // Low moisture level in percentage, which will trigger the pumping process
+#define TARGET_MOISTURE 60 // Target moisture level in percentage
+#define PUMP_SECONDS 20 // Number of seconds to pump for before waiting for another reading
+#define WAIT_SECONDS 30 // Seconds to wait inbetween pumps, before checking the moisture level again. Also waiting time between checking sensors.
 
 #define OLED_RESET 16
 #define OLED_WIDTH 128
