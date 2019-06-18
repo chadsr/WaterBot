@@ -100,6 +100,8 @@ void displayReadings() {
 
 void getReadingsJSON(char *dest, size_t size) {
   StaticJsonDocument<JSON_ARRAY_SIZE(NUM_MOISTURE_SENSORS) + JSON_OBJECT_SIZE(4)> json;
+
+  json.createNestedArray("moisture_values");
   JsonArray moistureValues = json["moisture_values"].as<JsonArray>();
 
   for (int i = 0; i < NUM_MOISTURE_SENSORS; i++) {
@@ -124,7 +126,7 @@ void handleReadings() {
 }
 
 void listenerLoop(void * pvParameters) {
-  while(true) { // Inifite loopings
+  while(true) { // Infinite loopings for the HTTP listener
     server.handleClient();
   }
 }
@@ -184,6 +186,7 @@ void setupWireless() {
   display.setCursor(0, 20);
   char buffer[15]; // Buffer large enough to hold an IPv4 address as string
   WiFi.localIP().toString().toCharArray(buffer, 15);
+  Serial.println(buffer);
   display.print(buffer);
   display.display();
   delay(5000); // Delay so the IP can be read
@@ -200,6 +203,7 @@ void setupWireless() {
 void setup() {
   dht.begin();
   tw.begin(PIN_SDA, PIN_SCL);
+  Serial.begin(9600);
 
   // Setup the pump and make sure it's off
   pinMode(PIN_PUMP, OUTPUT);
