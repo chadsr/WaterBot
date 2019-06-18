@@ -13,8 +13,8 @@
 #include "main.h"
 
 struct SensorReadings {
-  int moisture[NUM_MOISTURE_SENSORS];
-  int avgMoisture;
+  uint moisture[NUM_MOISTURE_SENSORS];
+  uint avgMoisture;
   float humidity;
   float temperature;
 };
@@ -25,7 +25,7 @@ WebServer server(API_PORT); // For JSON API
 DHT_Unified dht(PIN_DHT, DHT_TYPE);
 
 // The struct we will be keeping an up to date record of our readings in
-struct SensorReadings sensorReadings = {};
+struct SensorReadings sensorReadings = {0};
 
 // Returns a moisture value between 0 and 100, where 0 is dryest and 100 is fully submersed
 void updateMoistureReadings() {
@@ -35,8 +35,11 @@ void updateMoistureReadings() {
   // Read from the available moisture sensors and 
   for (int i = 0; i < NUM_MOISTURE_SENSORS; i++) {
     int adc = analogRead(PINS_MOISTURE[i]);
-    // Map the analog value to a value between 0 and 100 for easier reading
-    sensorReadings.moisture[i] = 100 - uint(map(adc, MAX_MOISTURE_VALUE, MIN_MOISTURE_VALUE, 0, 100));
+    // If we got an erroneous reading, just disregard it
+    if (adc >= MAX_MOISTURE_VALUE && adc <= MIN_MOISTURE_VALUE) {
+      // Map the analog value to a value between 0 and 100 for easier reading
+      sensorReadings.moisture[i] = uint(map(adc, MIN_MOISTURE_VALUE, MAX_MOISTURE_VALUE, 0, 100));
+    }
   }
 
   digitalWrite(PIN_MOISTURE_VCC, LOW); // Turn the sensors off again
@@ -46,7 +49,7 @@ void updateMoistureReadings() {
   for (int i = 0; i < NUM_MOISTURE_SENSORS; i++) {
     avgMoisture += sensorReadings.moisture[i];
   }
-  sensorReadings.avgMoisture = (int) round(avgMoisture / NUM_MOISTURE_SENSORS);
+  sensorReadings.avgMoisture = (uint) round(avgMoisture / NUM_MOISTURE_SENSORS);
 }
 
 void updateTempHumidity() {
@@ -99,7 +102,7 @@ void displayReadings() {
 }
 
 void getReadingsJSON(char *dest, size_t size) {
-  StaticJsonDocument<JSON_ARRAY_SIZE(NUM_MOISTURE_SENSORS) + JSON_OBJECT_SIZE(4)> json;
+  StaticJsonDocument<JSON_ARRAY_SIZE(NUM_MOISTURE_SENSORS) + JSON_OBJECT_SIZE(4) + 50> json;
 
   json.createNestedArray("moisture_values");
   JsonArray moistureValues = json["moisture_values"].as<JsonArray>();
@@ -142,7 +145,7 @@ void loop() {
       pumpWater(PUMP_SECONDS);
       displayReadings();
       delay(WAIT_SECONDS * 1000);
-      updateSensorReadings(); // Read the moisture level again
+      updateSensorReadings(); // Read the sensors again
       displayReadings();
     }
   } else {
