@@ -31,6 +31,4 @@
 *.out
 *.app
 
-.*
-!.gitignore
-!.travis.yml
+.vscode
