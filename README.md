@@ -1,5 +1,5 @@
 # WaterBot
-[![Build Status](https://travis-ci.org/Chadsr/WaterBot.svg?branch=master)](https://travis-ci.org/Chadsr/WaterBot)
+[![Build](https://github.com/Chadsr/WaterBot/actions/workflows/build.yml/badge.svg)](https://github.com/Chadsr/WaterBot/actions/workflows/build.yml)
 
 ESP32 Controlled Plant Watering System
 
